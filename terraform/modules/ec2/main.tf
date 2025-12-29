@@ -10,20 +10,26 @@ resource "aws_instance" "web" {
   vpc_security_group_ids = [var.security_group_id]
   key_name               = aws_key_pair.this.key_name
 
+  # Script corrigido para UBUNTU
   user_data = <<-EOF
               #!/bin/bash
+              # Espera a rede estabilizar
+              sleep 30
+              apt-get update -y
+              
               cd /tmp
               wget https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-amd64.tar.gz
               tar xvfz node_exporter-1.7.0.linux-amd64.tar.gz
-              sudo mv node_exporter-1.7.0.linux-amd64/node_exporter /usr/local/bin/
-              sudo tee /etc/systemd/system/node_exporter.service <<SERVICE
+              mv node_exporter-1.7.0.linux-amd64/node_exporter /usr/local/bin/
 
+              # Criar serviço apontando para o usuário 'ubuntu'
+              cat <<SERVICE > /etc/systemd/system/node_exporter.service
               [Unit]
               Description=Node Exporter
               After=network.target
 
               [Service]
-              User=ec2-user
+              User=ubuntu
               ExecStart=/usr/local/bin/node_exporter
               Restart=always
 
@@ -31,11 +37,10 @@ resource "aws_instance" "web" {
               WantedBy=multi-user.target
               SERVICE
 
-              # Inicialização do serviço
-              sudo systemctl daemon-reload
-              sudo systemctl enable --now node_exporter
+              systemctl daemon-reload
+              systemctl enable node_exporter
+              systemctl start node_exporter
               EOF
-
 
   tags = {
     Name      = "server-${terraform.workspace}"
