@@ -8,21 +8,23 @@ resource "aws_instance" "web" {
   instance_type          = var.instance_type
   subnet_id              = var.subnet_id
   vpc_security_group_ids = [var.security_group_id]
-  key_name               = aws_key_pair.this.key_name
+  # Mesmo sem a chave física, mantenha a referência se ela existir no código
+  key_name               = aws_key_pair.this.key_name 
 
-  # Script corrigido para UBUNTU
+  # Script de automação total para Ubuntu
   user_data = <<-EOF
               #!/bin/bash
-              # Espera a rede estabilizar
-              sleep 30
+              # Atualiza repositórios e instala dependências básicas
               apt-get update -y
-              
+              apt-get install -y wget
+
+              # Download e instalação do Node Exporter
               cd /tmp
               wget https://github.com/prometheus/node_exporter/releases/download/v1.7.0/node_exporter-1.7.0.linux-amd64.tar.gz
               tar xvfz node_exporter-1.7.0.linux-amd64.tar.gz
               mv node_exporter-1.7.0.linux-amd64/node_exporter /usr/local/bin/
 
-              # Criar serviço apontando para o usuário 'ubuntu'
+              # Criação do serviço Systemd apontando para o usuário padrão do Ubuntu
               cat <<SERVICE > /etc/systemd/system/node_exporter.service
               [Unit]
               Description=Node Exporter
@@ -37,6 +39,7 @@ resource "aws_instance" "web" {
               WantedBy=multi-user.target
               SERVICE
 
+              # Inicialização do serviço
               systemctl daemon-reload
               systemctl enable node_exporter
               systemctl start node_exporter
