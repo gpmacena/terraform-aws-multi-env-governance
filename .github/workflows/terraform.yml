@@ -19,14 +19,14 @@ jobs:
     name: "Terraform ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}"
     runs-on: ubuntu-latest
     
-    # Lógica de Aprovação: Só pede OK se for ambiente 'prod'
+    # Lógica de Aprovação: Só pede OK se for ambiente 'prod' ou branch 'main'
     environment: ${{ (github.event.inputs.environment == 'prod' || github.ref == 'refs/heads/main') && 'production' || 'development' }}
 
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: "sa-east-1"
-      # Decide o Workspace baseado no gatilho (manual ou push)
+      # Define o nome do ambiente baseado no input manual ou na branch
       ENV_NAME: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}
 
     steps:
@@ -44,17 +44,16 @@ jobs:
           cd terraform
           terraform workspace select ${{ env.ENV_NAME }} || terraform workspace new ${{ env.ENV_NAME }}
 
-      # AÇÃO 1: DESTROY (Apenas via gatilho manual)
+      # AÇÃO 1: DESTROY (Apenas via gatilho manual 'workflow_dispatch')
       - name: Terraform Destroy
         if: github.event.inputs.action == 'destroy'
         run: |
           cd terraform
-          terraform destroy -var-file="environments/${{ env.ENV_NAME }}.tfvars" -auto-approve
+          terraform destroy -var="environment=${{ env.ENV_NAME }}" -var-file="environments/${{ env.ENV_NAME }}.tfvars" -auto-approve
 
-      # AÇÃO 2: APPLY (Via Push ou gatilho manual)
+      # AÇÃO 2: APPLY (Executado em Push ou gatilho manual 'apply')
       - name: Terraform Apply
         if: github.event.inputs.action != 'destroy'
         run: |
           cd terraform
-          terraform apply -var-file="environments/${{ env.ENV_NAME }}.tfvars" -auto-approve
-          
+          terraform apply -var="environment=${{ env.ENV_NAME }}" -var-file="environments/${{ env.ENV_NAME }}.tfvars" -auto-approve

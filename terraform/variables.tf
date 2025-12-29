@@ -32,3 +32,9 @@ variable "ami_id" {
 variable "public_key_path" {
   type        = string
 }
+
+variable "environment" {
+  description = "Ambiente atual vindo do workspace"
+  type        = string
+  default     = ""
+}

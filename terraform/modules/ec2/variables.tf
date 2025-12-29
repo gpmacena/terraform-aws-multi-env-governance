@@ -27,3 +27,7 @@ variable "public_key" {
   type        = string
   description = "Conteúdo da chave pública (lido via função file no main raiz)"
 }
+
+variable "environment" {
+  type        = string
+}

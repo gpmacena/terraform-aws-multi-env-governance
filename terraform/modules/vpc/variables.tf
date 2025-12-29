@@ -10,3 +10,7 @@ variable "public_subnets" {
   }))
   description = "Mapa de subnets públicas"
 }
+
+variable "environment" {
+  type        = string
+}

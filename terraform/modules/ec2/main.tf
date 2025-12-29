@@ -47,7 +47,7 @@ resource "aws_instance" "web" {
 
   tags = {
     Name      = "server-${terraform.workspace}"
-    Env       = terraform.workspace
+    Env       = var.environment
     monitorar = "true" 
   }
 }
