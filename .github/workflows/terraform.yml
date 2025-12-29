@@ -1,22 +1,33 @@
-name: "Terraform Multi-Env Deployment"
+name: "Terraform Enterprise Governance"
 
 on:
   push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - main
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Ação a realizar (apply ou destroy)'
+        required: true
+        default: 'apply'
+      environment:
+        description: 'Ambiente (dev ou prod)'
+        required: true
+        default: 'dev'
 
 jobs:
   terraform:
-    name: "Terraform Workflow"
+    name: "Terraform ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}"
     runs-on: ubuntu-latest
+    
+    # Lógica de Aprovação: Só pede OK se for ambiente 'prod'
+    environment: ${{ (github.event.inputs.environment == 'prod' || github.ref == 'refs/heads/main') && 'production' || 'development' }}
+
     env:
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       AWS_REGION: "sa-east-1"
+      # Decide o Workspace baseado no gatilho (manual ou push)
+      ENV_NAME: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'prod' || 'dev') }}
 
     steps:
       - name: Checkout Code
@@ -26,31 +37,24 @@ jobs:
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
+        run: cd terraform && terraform init
+
+      - name: Terraform Workspace Select
         run: |
           cd terraform
-          terraform init
+          terraform workspace select ${{ env.ENV_NAME }} || terraform workspace new ${{ env.ENV_NAME }}
 
-      - name: Select Workspace & Environment
-        id: env-setup
+      # AÇÃO 1: DESTROY (Apenas via gatilho manual)
+      - name: Terraform Destroy
+        if: github.event.inputs.action == 'destroy'
         run: |
           cd terraform
-          if [ "${{ github.ref }}" == "refs/heads/main" ]; then
-            echo "WORKSPACE=prod" >> $GITHUB_ENV
-            echo "VARS_FILE=prod.tfvars" >> $GITHUB_ENV
-          else
-            echo "WORKSPACE=dev" >> $GITHUB_ENV
-            echo "VARS_FILE=dev.tfvars" >> $GITHUB_ENV
-          fi
+          terraform destroy -var-file="environments/${{ env.ENV_NAME }}.tfvars" -auto-approve
 
-      - name: Terraform Plan
-        run: |
-          cd terraform
-          terraform workspace select ${{ env.WORKSPACE }} || terraform workspace new ${{ env.WORKSPACE }}
-          terraform plan -var-file="environments/${{ env.VARS_FILE }}"
-
+      # AÇÃO 2: APPLY (Via Push ou gatilho manual)
       - name: Terraform Apply
-        if: github.event_name == 'push'
+        if: github.event.inputs.action != 'destroy'
         run: |
           cd terraform
-          terraform workspace select ${{ env.WORKSPACE }}
-          terraform apply -var-file="environments/${{ env.VARS_FILE }}" -auto-approve
+          terraform apply -var-file="environments/${{ env.ENV_NAME }}.tfvars" -auto-approve
+          
