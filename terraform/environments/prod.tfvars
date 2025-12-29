@@ -1,5 +1,5 @@
 vpc_cidr      = "10.20.0.0/16"
-instance_type = "t3.medium"
+instance_type = "t2.micro"
 ami_id        = "ami-0bde73fd629657a59"
 
 public_subnets = {
