@@ -11,7 +11,6 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Acesso HTTP (Aplicação)
   ingress {
     from_port   = 80
     to_port     = 80
@@ -19,7 +18,6 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # NOVA REGRA: Porta do Node Exporter para o Prometheus Local
   ingress {
     description = "Porta do Node Exporter"
     from_port   = 9100
@@ -28,7 +26,6 @@ resource "aws_security_group" "web_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Saída liberada para baixar o Node Exporter
   egress {
     from_port   = 0
     to_port     = 0
